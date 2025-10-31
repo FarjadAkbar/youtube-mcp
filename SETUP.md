@@ -14,16 +14,50 @@ npm run build
 
 ### 3. Get a YouTube API Key
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
-3. Enable the **YouTube Data API v3**:
-   - Navigate to "APIs & Services" > "Library"
-   - Search for "YouTube Data API v3"
-   - Click "Enable"
-4. Create credentials:
-   - Go to "APIs & Services" > "Credentials"
-   - Click "Create Credentials" > "API Key"
-   - Copy your API key
+#### Step-by-Step Guide:
+
+1. **Go to Google Cloud Console**
+   - Visit: https://console.cloud.google.com/
+   - Sign in with your Google account
+
+2. **Create or Select a Project**
+   - Click the project dropdown at the top
+   - Click "New Project" or select an existing one
+   - Note: Google Cloud provides free tier with quota limits
+
+3. **Enable YouTube Data API v3**
+   - Navigate to: "APIs & Services" > "Library"
+   - Search for: "YouTube Data API v3"
+   - Click on it and then click **"Enable"**
+   - ⚠️ **Important**: You MUST enable this API or you'll get 400 errors
+
+4. **Create API Key**
+   - Go to: "APIs & Services" > "Credentials"
+   - Click: "Create Credentials" > "API Key"
+   - Copy the API key that appears
+   - **Optional**: Click "Restrict Key" to limit usage
+     - Under "API restrictions", select "Restrict key"
+     - Choose "YouTube Data API v3" from the list
+     - For IP restrictions: Only use if you have a static IP
+
+5. **Configure in Your Project**
+   - Create a `.env` file in the project root:
+     ```ini
+     YOUTUBE_API_KEY=your_api_key_here
+     ```
+   - **Never commit `.env` to git** (it's already in `.gitignore`)
+
+#### Testing Your API Key:
+
+You can test if your API key works by visiting this URL in your browser (replace `YOUR_API_KEY`):
+```
+https://www.googleapis.com/youtube/v3/search?part=snippet&q=test&key=YOUR_API_KEY
+```
+
+If you see JSON data, your API key works! If you see an error, check:
+- Is YouTube Data API v3 enabled?
+- Is the API key correct?
+- Have you exceeded the quota? (Free tier: 10,000 units/day)
 
 ### 4. Configure Claude Desktop
 

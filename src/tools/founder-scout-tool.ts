@@ -41,7 +41,35 @@ export class FounderScoutTool {
     const maxResults = params.maxResults ?? 5;
     const query = `How I built a ${monthlyRevenue} business ${targetGeography}`;
 
-    const searchResults = await client.searchVideos(query, maxResults);
+    let searchResults: any[] = [];
+    try {
+      searchResults = await client.searchVideos(query, maxResults);
+    } catch (err: any) {
+      const msg = String(err?.message || err);
+      return [
+        confirmation,
+        '',
+        '⚠️ YouTube API Error (400) - Invalid or Missing API Key',
+        '',
+        'Quick Fix Steps:',
+        '1. Get a YouTube Data API v3 key:',
+        '   - Go to https://console.cloud.google.com/',
+        '   - Create/select a project',
+        '   - Enable "YouTube Data API v3" in APIs & Services > Library',
+        '   - Create credentials > API Key',
+        '',
+        '2. Create a .env file in the project root with:',
+        '   YOUTUBE_API_KEY=your_api_key_here',
+        '',
+        '3. Restart the server: npm run start:http',
+        '',
+        'Test your API key:',
+        'Visit: https://www.googleapis.com/youtube/v3/search?part=snippet&q=test&key=YOUR_KEY',
+        'If you see JSON data, your key works!',
+        '',
+        `Error Details: ${msg}`,
+      ].join('\n');
+    }
 
     const reports: BusinessReport[] = [];
 
@@ -59,6 +87,13 @@ export class FounderScoutTool {
       } catch (_) {
         // Fallback to description if transcript unavailable
         transcript = item.snippet?.description ?? '';
+      }
+      // If transcript is still empty/short, try explicit description fallback
+      if (!transcript || transcript.trim().length < 20) {
+        try {
+          const desc = await client.getVideoDescription(videoId);
+          if (desc && desc.trim().length > 0) transcript = desc;
+        } catch (_) {}
       }
 
       const { founderName, businessName } = FounderScoutTool.extractEntities(title, channelTitle, transcript);

@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+import 'dotenv/config';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import fs from 'fs';
 import express from 'express';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -210,9 +215,41 @@ class YouTubeMCPServer {
       }
 
       // Get or create YouTube client for the user
-      const apiKey = args?.apiKey || process.env.YOUTUBE_API_KEY;
-      if (!apiKey || typeof apiKey !== 'string') {
-        throw new Error('API key required. Please provide apiKey parameter or set YOUTUBE_API_KEY environment variable.');
+      let apiKey: string | undefined = process.env.YOUTUBE_API_KEY;
+      
+      // Clean up API key (remove quotes, trim whitespace, remove any BOM)
+      if (apiKey) {
+        apiKey = String(apiKey)
+          .trim()
+          .replace(/^\uFEFF/, '') // Remove BOM if present
+          .replace(/^["']+|["']+$/g, ''); // Remove quotes from start/end
+      }
+      
+      console.log('API Key check (stdio):', {
+        hasApiKeyInArgs: !!args?.apiKey,
+        hasApiKeyInEnv: !!process.env.YOUTUBE_API_KEY,
+        apiKeyLength: apiKey ? apiKey.length : 0,
+        apiKeyPrefix: apiKey ? apiKey.substring(0, 10) + '...' : 'none',
+        apiKeyValidFormat: apiKey && apiKey.length > 30 && apiKey.length < 100,
+        rawEnvLength: process.env.YOUTUBE_API_KEY ? String(process.env.YOUTUBE_API_KEY).length : 0,
+      });
+      
+      if (!apiKey || typeof apiKey !== 'string' || apiKey.length < 20) {
+        const diagnostic = apiKey 
+          ? `Found key with length ${apiKey.length} (starts with: ${apiKey.substring(0, Math.min(20, apiKey.length))})`
+          : 'No API key found';
+        const envKey = process.env.YOUTUBE_API_KEY;
+        const envInfo = envKey 
+          ? `Environment has key with length ${String(envKey).length} (starts with: ${String(envKey).substring(0, Math.min(20, String(envKey).length))})`
+          : 'No key in environment';
+        
+        throw new Error(
+          'API key required and must be valid (minimum 20 characters).\n' +
+          `Diagnostic: ${diagnostic}\n` +
+          `Environment: ${envInfo}\n` +
+          'Please check your .env file has YOUTUBE_API_KEY=your_key (no quotes, no spaces around =)\n' +
+          'Make sure the .env file is in the project root and the key is on a single line with no line breaks.'
+        );
       }
 
       const clientKey: string = apiKey;
@@ -468,9 +505,41 @@ class YouTubeMCPServer {
       }
 
       // Get or create YouTube client for the user
-      const apiKey = args?.apiKey || process.env.YOUTUBE_API_KEY;
-      if (!apiKey || typeof apiKey !== 'string') {
-        throw new Error('API key required. Please provide apiKey parameter or set YOUTUBE_API_KEY environment variable.');
+      let apiKey: string | undefined = process.env.YOUTUBE_API_KEY;
+      
+      // Clean up API key (remove quotes, trim whitespace, remove any BOM)
+      if (apiKey) {
+        apiKey = String(apiKey)
+          .trim()
+          .replace(/^\uFEFF/, '') // Remove BOM if present
+          .replace(/^["']+|["']+$/g, ''); // Remove quotes from start/end
+      }
+      
+      console.log('API Key check:', {
+        hasApiKeyInArgs: !!args?.apiKey,
+        hasApiKeyInEnv: !!process.env.YOUTUBE_API_KEY,
+        apiKeyLength: apiKey ? apiKey.length : 0,
+        apiKeyPrefix: apiKey ? apiKey.substring(0, 10) + '...' : 'none',
+        apiKeyValidFormat: apiKey && apiKey.length > 30 && apiKey.length < 100, // YouTube API keys are typically 39 chars
+        rawEnvLength: process.env.YOUTUBE_API_KEY ? String(process.env.YOUTUBE_API_KEY).length : 0,
+      });
+      
+      if (!apiKey || typeof apiKey !== 'string' || apiKey.length < 20) {
+        const diagnostic = apiKey 
+          ? `Found key with length ${apiKey.length} (starts with: ${apiKey.substring(0, Math.min(20, apiKey.length))})`
+          : 'No API key found';
+        const envKey = process.env.YOUTUBE_API_KEY;
+        const envInfo = envKey 
+          ? `Environment has key with length ${String(envKey).length} (starts with: ${String(envKey).substring(0, Math.min(20, String(envKey).length))})`
+          : 'No key in environment';
+        
+        throw new Error(
+          'API key required and must be valid (minimum 20 characters).\n' +
+          `Diagnostic: ${diagnostic}\n` +
+          `Environment: ${envInfo}\n` +
+          'Please check your .env file has YOUTUBE_API_KEY=your_key (no quotes, no spaces around =)\n' +
+          'Make sure the .env file is in the project root and the key is on a single line with no line breaks.'
+        );
       }
 
       const clientKey: string = apiKey;
@@ -505,6 +574,68 @@ class YouTubeMCPServer {
 // Check if running in HTTP mode
 const mode = process.env.MCP_SERVER_MODE || 'stdio';
 const port = parseInt(process.env.MCP_SERVER_PORT || '3000');
+
+// Robust .env loading: try CWD first (already done by dotenv/config), then project root relative to dist/src
+try {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const candidates = [
+    path.resolve(process.cwd(), '.env'), // current working directory
+    path.resolve(__dirname, '../.env'), // when running from dist
+    path.resolve(__dirname, '../../.env'), // safety if structure differs
+  ];
+  
+  console.error('Checking for .env file...');
+  console.error('CWD:', process.cwd());
+  console.error('__dirname:', __dirname);
+  console.error('Candidates:', candidates);
+  
+  let loaded = false;
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      console.error('Found .env at:', p);
+      const result = dotenv.config({ path: p, override: true });
+      if (!result.error) {
+        const key = process.env.YOUTUBE_API_KEY;
+        if (key) {
+          const cleanKey = String(key)
+            .trim()
+            .replace(/^\uFEFF/, '') // Remove BOM if present
+            .replace(/^["']+|["']+$/g, ''); // Remove quotes from start/end
+          if (cleanKey && cleanKey.length > 20) {
+            process.env.YOUTUBE_API_KEY = cleanKey;
+            console.error('[OK] Loaded YOUTUBE_API_KEY from .env (length:', cleanKey.length, ', prefix:', cleanKey.substring(0, 10) + '...)');
+            loaded = true;
+            break;
+          } else {
+            console.error('[WARN] YOUTUBE_API_KEY found but too short or invalid');
+            console.error('[WARN] Clean key length:', cleanKey?.length || 0);
+            console.error('[WARN] Raw key length:', String(key).length);
+            console.error('[WARN] Raw key (first 50 chars):', JSON.stringify(String(key).substring(0, 50)));
+            console.error('[WARN] Clean key (first 50 chars):', JSON.stringify(cleanKey?.substring(0, 50) || ''));
+          }
+        }
+      } else {
+        console.error('Error loading .env:', result.error.message);
+      }
+    }
+  }
+  
+  if (!loaded && !process.env.YOUTUBE_API_KEY) {
+    console.error('[WARN] YOUTUBE_API_KEY not found in environment. Tools may fail.');
+    console.error('Please ensure .env file exists in project root with: YOUTUBE_API_KEY=your_key');
+  } else if (loaded) {
+    // Verify it's actually set correctly
+    const finalKey = process.env.YOUTUBE_API_KEY;
+    console.error('Final YOUTUBE_API_KEY check - Length:', finalKey?.length || 0, 'Type:', typeof finalKey);
+  }
+  
+  if (!process.env.YOUTUBE_API_KEY) {
+    console.warn('[WARN] YOUTUBE_API_KEY not found in environment variables or .env file');
+  }
+} catch (err) {
+  console.error('Error loading .env:', err);
+}
 
 const server = new YouTubeMCPServer();
 
