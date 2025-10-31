@@ -1,0 +1,33 @@
+{
+  "name": "youtube-mcp-server",
+  "version": "1.0.0",
+  "description": "YouTube MCP server for getting transcripts, summaries, and channel analysis",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:http": "node dist/index.js",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "mcp",
+    "youtube",
+    "transcript",
+    "summary"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.0",
+    "youtube-transcript": "^1.2.1",
+    "googleapis": "^144.0.0",
+    "axios": "^1.7.7",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/express": "^4.17.21",
+    "typescript": "^5.5.0"
+  }
+}
